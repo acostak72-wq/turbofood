@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TurboFood AI v130 | Enterprise Edition</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://www.paypal.com/sdk/js?client-id=7KDNB6RK22YL4&currency=USD"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
+        :root { --primary: #ef4444; --dark: #0f172a; --accent: #10b981; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: var(--dark); overflow-x: hidden; }
+        .card-neo { border-radius: 2rem; border: 1px solid #e2e8f0; background: white; transition: 0.3s; }
+        .tab-active { background: var(--primary) !important; color: white !important; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); }
+        .modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); display: none; justify-content: center; align-items: center; z-index: 2000; backdrop-filter: blur(10px); padding: 20px; }
+        .ai-glow { animation: pulse-red 2s infinite alternate; }
+        @keyframes pulse-red { from { box-shadow: 0 0 10px rgba(239, 68, 68, 0.1); } to { box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); } }
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar" class="w-72 bg-slate-950 text-white fixed h-full flex flex-col p-6 z-50 transition-transform lg:translate-x-0 -translate-x-full">
+        <div class="flex items-center gap-3 mb-10 pb-6 border-b border-white/10">
+            <div class="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black italic">TF</div>
+            <div>
+                <h1 class="font-black text-lg uppercase italic tracking-tighter">TurboFood AI</h1>
+                <span class="text-red-500 text-[9px] font-bold uppercase tracking-widest">v130 Enterprise</span>
+            </div>
+        </div>
+
+        <nav class="space-y-2 flex-1">
+            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="tab-btn w-full flex items-center gap-4 p-4 rounded-2xl text-sm font-bold hover:bg-white/5 transition text-left"><i class="fas fa-chart-line"></i> <span class="lang-txt" data-es="Dashboard IA" data-en="AI Dashboard">Dashboard IA</span></button>
+            <button onclick="switchTab('platos')" id="btn-platos" class="tab-btn w-full flex items-center gap-4 p-4 rounded-2xl text-sm font-bold hover:bg-white/5 transition text-left"><i class="fas fa-utensils"></i> <span class="lang-txt" data-es="Escandallos" data-en="Recipe Costing">Escandallos</span></button>
+            <button onclick="switchTab('inventario')" id="btn-inventario" class="tab-btn w-full flex items-center gap-4 p-4 rounded-2xl text-sm font-bold hover:bg-white/5 transition text-left"><i class="fas fa-boxes"></i> <span class="lang-txt" data-es="Inventario" data-en="Inventory">Inventario</span></button>
+            <button onclick="switchTab('gastos')" id="btn-gastos" class="tab-btn w-full flex items-center gap-4 p-4 rounded-2xl text-sm font-bold hover:bg-white/5 transition text-left"><i class="fas fa-file-invoice-dollar"></i> <span class="lang-txt" data-es="Gastos Fijos/Var" data-en="Fixed/Var Expenses">Gastos Fijos/Var</span></button>
+        </nav>
+
+        <div class="mt-auto pt-6 space-y-2 border-t border-white/10">
+            <p class="text-[9px] text-slate-500 uppercase font-black mb-2 text-center lang-txt" data-es="Exportación Pro" data-en="Pro Export">Exportación Pro</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="exportarExcel()" class="py-3 bg-emerald-600 rounded-xl text-[10px] font-black uppercase"><i class="fas fa-file-excel"></i> Excel</button>
+                <button onclick="generarPDF()" class="py-3 bg-white/10 rounded-xl text-[10px] font-black uppercase"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
+            <div class="p-4 bg-slate-900 rounded-2xl text-center mt-4">
+                <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">WhatsApp Soporte</p>
+                <a href="https://wa.me/573223565207" target="_blank" class="text-xs font-black text-green-400 italic">+57 322 356 5207</a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="lg:ml-72 p-4 lg:p-10 min-h-screen">
+        <header class="mb-10 flex flex-col lg:flex-row justify-between items-center bg-white p-6 rounded-[2.5rem] border shadow-sm gap-6">
+            <div class="flex items-center gap-4">
+                <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="lg:hidden p-3 bg-slate-100 rounded-xl"><i class="fas fa-bars"></i></button>
+                <div class="px-5 py-2 bg-slate-50 rounded-full border">
+                    <span id="txt-plan" class="text-[10px] font-black text-red-600 uppercase italic">CARGANDO...</span>
+                    <span id="txt-venc" class="text-[9px] font-bold text-slate-400 ml-2"></span>
+                </div>
+                <button onclick="abrirModal('modalSuscripcion')" class="bg-slate-950 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-xl hover:bg-red-600 transition lang-txt" data-es="PLANES PRO" data-en="PRO PLANS">PLANES PRO</button>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border">
+                <i class="fas fa-globe text-slate-400 ml-2"></i>
+                <select id="config-selector" onchange="changeConfig(this.value)" class="bg-transparent p-1 text-[11px] font-black uppercase outline-none cursor-pointer">
+                    <option value="es|de-DE|EUR|€|15|120">Español - EURO €</option>
+                    <option value="es|es-CO|COP|$|49000|399000">Español - COP $</option>
+                    <option value="en|en-US|USD|$|15|110">English - USD $</option>
+                </select>
+            </div>
+        </header>
+
+        <section id="tab-dashboard" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lg:col-span-2 p-8 bg-slate-950 rounded-[2.5rem] text-white flex flex-col md:flex-row items-center gap-6 ai-glow relative overflow-hidden">
+                    <div class="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center text-3xl shadow-2xl z-10"><i class="fas fa-brain"></i></div>
+                    <div class="flex-1 z-10">
+                        <h4 class="font-black uppercase text-[10px] text-red-500 mb-1 tracking-widest italic lang-txt" data-es="INTELIGENCIA OPERATIVA" data-en="OPERATIONAL AI">INTELIGENCIA OPERATIVA</h4>
+                        <p id="ai-message" class="text-base font-medium italic text-slate-300 lang-txt" data-es="Analizando rentabilidad y punto de equilibrio..." data-en="Analyzing profitability and breakeven point...">Analizando rentabilidad y punto de equilibrio...</p>
+                    </div>
+                    <button onclick="ejecutarIA()" class="px-8 py-4 bg-white text-slate-950 rounded-xl font-black text-[10px] uppercase hover:bg-red-600 hover:text-white transition z-10 lang-txt" data-es="CALCULAR EQUILIBRIO" data-en="CALCULATE BREAKEVEN">CALCULAR EQUILIBRIO</button>
+                </div>
+                <div class="card-neo p-8 bg-emerald-50 border-emerald-100 text-center flex flex-col justify-center">
+                    <p class="text-[10px] font-black text-emerald-600 uppercase mb-2 italic lang-txt" data-es="VENTA REQUERIDA (EQUILIBRIO)" data-en="REQUIRED SALES (BREAKEVEN)">VENTA REQUERIDA (EQUILIBRIO)</p>
+                    <h3 id="kpi-breakeven" class="text-3xl font-black text-slate-900 leading-none">0</h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10 text-center">
+                <div class="card-neo p-6"><p class="text-[9px] font-black text-slate-400 uppercase lang-txt" data-es="VENTAS BRUTAS" data-en="GROSS SALES">VENTAS BRUTAS</p><h3 id="kpi-sales" class="text-xl font-black">0</h3></div>
+                <div class="card-neo p-6"><p class="text-[9px] font-black text-orange-400 uppercase lang-txt" data-es="COSTOS DIRECTOS" data-en="DIRECT COSTS">COSTOS DIRECTOS</p><h3 id="kpi-cost" class="text-xl font-black text-orange-500">0</h3></div>
+                <div class="card-neo p-6"><p class="text-[9px] font-black text-red-400 uppercase lang-txt" data-es="GASTOS FIJOS" data-en="FIXED EXPENSES">GASTOS FIJOS</p><h3 id="kpi-fixed" class="text-xl font-black text-red-500">0</h3></div>
+                <div class="card-neo p-6 bg-slate-900 text-white"><p class="text-[9px] font-black text-emerald-400 uppercase lang-txt" data-es="UTILIDAD NETA" data-en="NET PROFIT">UTILIDAD NETA</p><h3 id="kpi-profit" class="text-xl font-black text-emerald-400">0</h3></div>
+            </div>
+            
+            <div class="card-neo p-8 h-[400px] shadow-sm"><canvas id="mainChart"></canvas></div>
+        </section>
+
+        <section id="tab-platos" class="tab-content hidden flex flex-col lg:flex-row gap-8">
+            <div class="w-full lg:w-[450px] space-y-6">
+                <div class="card-neo p-8 bg-slate-950 text-white shadow-2xl">
+                    <h3 class="text-xl font-black mb-6 uppercase text-red-500 italic lang-txt" data-es="ESCANDALLO MAESTRO" data-en="MASTER COSTING">ESCANDALLO MAESTRO</h3>
+                    <div class="space-y-4">
+                        <input id="dish-name" type="text" placeholder="NOMBRE DEL PLATO" class="w-full p-4 bg-white/5 rounded-xl font-bold uppercase outline-none border border-white/10 focus:border-red-500">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-[9px] font-black text-slate-500 uppercase lang-txt" data-es="PRECIO VENTA" data-en="SALE PRICE">PRECIO VENTA</label><input id="dish-price" type="number" class="w-full p-4 bg-white/10 rounded-xl font-black"></div>
+                            <div><label class="text-[9px] font-black text-slate-500 uppercase lang-txt" data-es="COSTO EMPAQUE" data-en="PACKAGING">COSTO EMPAQUE</label><input id="dish-pack" type="number" class="w-full p-4 bg-white/10 rounded-xl font-black"></div>
+                        </div>
+                        <div><label class="text-[9px] font-black text-slate-500 uppercase lang-txt" data-es="COSTO ENVÍO" data-en="SHIPPING">COSTO ENVÍO</label><input id="dish-ship" type="number" class="w-full p-4 bg-white/10 rounded-xl font-black"></div>
+                        <p class="text-[10px] font-black text-slate-500 uppercase italic border-b border-white/10 pb-2 lang-txt" data-es="INGREDIENTES RECETA" data-en="RECIPE INGREDIENTS">INGREDIENTES RECETA</p>
+                        <div id="dish-ing-selector" class="space-y-2 max-h-40 overflow-y-auto bg-white/5 p-3 rounded-xl custom-scroll"></div>
+                        <button onclick="addDish()" class="w-full py-4 bg-red-600 text-white rounded-xl font-black uppercase text-[10px] lang-txt" data-es="GUARDAR Y CALCULAR" data-en="SAVE & CALCULATE">GUARDAR Y CALCULAR</button>
+                    </div>
+                </div>
+                
+                <div class="card-neo p-8 border-2 border-emerald-100">
+                    <h3 class="text-lg font-black mb-4 uppercase text-emerald-600 italic lang-txt" data-es="CONFIGURAR COMBO" data-en="SET COMBO">CONFIGURAR COMBO</h3>
+                    <input id="combo-name" type="text" placeholder="NOMBRE DEL COMBO" class="w-full p-4 bg-slate-50 rounded-xl mb-3 font-bold uppercase border">
+                    <input id="combo-price" type="number" placeholder="PRECIO COMBO" class="w-full p-4 bg-emerald-50 rounded-xl mb-3 font-black text-emerald-600 border">
+                    <div id="combo-items-selector" class="space-y-2 max-h-32 overflow-y-auto bg-slate-50 p-3 rounded-xl mb-3 custom-scroll"></div>
+                    <button onclick="addCombo()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] lang-txt" data-es="LANZAR COMBO" data-en="LAUNCH COMBO">LANZAR COMBO</button>
+                </div>
+            </div>
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 h-fit" id="grid-menu"></div>
+        </section>
+
+        <section id="tab-inventario" class="tab-content hidden flex flex-col lg:flex-row gap-8">
+            <div class="w-full lg:w-96 card-neo p-8">
+                <h3 class="font-black uppercase mb-6 italic lang-txt" data-es="ENTRADA DE STOCK" data-en="STOCK ENTRY">ENTRADA DE STOCK</h3>
+                <div class="space-y-4">
+                    <input id="inv-name" type="text" placeholder="INSUMO" class="w-full p-4 border rounded-xl font-bold uppercase">
+                    <select id="inv-unit" class="w-full p-4 border rounded-xl font-black">
+                        <option value="KG">KG</option><option value="GR">GR</option><option value="L">L</option><option value="ML">ML</option><option value="UND">UND</option>
+                    </select>
+                    <input id="inv-cost" type="number" placeholder="COSTO COMPRA" class="w-full p-4 border rounded-xl font-bold">
+                    <input id="inv-qp" type="number" placeholder="CANTIDAD RECIBIDA" class="w-full p-4 border rounded-xl font-bold">
+                    <input id="inv-stock" type="number" placeholder="EXISTENCIAS" class="w-full p-4 border rounded-xl font-bold">
+                    <button onclick="addInventory()" class="w-full py-4 bg-slate-950 text-white rounded-xl font-black uppercase lang-txt" data-es="CARGAR INVENTARIO" data-en="UPLOAD INVENTORY">CARGAR INVENTARIO</button>
+                </div>
+            </div>
+            <div class="flex-1 card-neo p-8 overflow-x-auto">
+                <table class="w-full text-left" id="table-inv-pdf">
+                    <thead class="text-[10px] font-black text-slate-400 uppercase border-b">
+                        <tr><th class="pb-4 px-4">Insumo</th><th>Unidad</th><th>Costo Unit.</th><th>Stock</th><th class="text-right">Acción</th></tr>
+                    </thead>
+                    <tbody id="table-inventory" class="divide-y text-sm font-bold uppercase italic"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="tab-gastos" class="tab-content hidden flex flex-col lg:flex-row gap-8">
+            <div class="w-full lg:w-96 card-neo p-8">
+                <h3 class="font-black uppercase mb-6 text-red-600 italic lang-txt" data-es="CLASIFICACIÓN GASTOS" data-en="EXPENSE CATEGORY">CLASIFICACIÓN GASTOS</h3>
+                <div class="space-y-4">
+                    <input id="exp-name" type="text" placeholder="CONCEPTO" class="w-full p-4 rounded-xl border font-bold uppercase">
+                    <select id="exp-type" class="w-full p-4 rounded-xl border font-black bg-white">
+                        <option value="Fijo">Gasto Fijo (Mes)</option>
+                        <option value="Variable">Gasto Variable</option>
+                    </select>
+                    <input id="exp-amount" type="number" placeholder="MONTO" class="w-full p-4 rounded-xl font-black border">
+                    <button onclick="addExpense()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase lang-txt" data-es="AÑADIR GASTO" data-en="ADD EXPENSE">AÑADIR GASTO</button>
+                </div>
+            </div>
+            <div class="flex-1 card-neo p-8 overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="text-[10px] font-black text-slate-400 uppercase border-b">
+                        <tr><th class="pb-4 px-4">Concepto</th><th>Categoría</th><th>Monto</th><th class="text-right">Acción</th></tr>
+                    </thead>
+                    <tbody id="table-expenses" class="divide-y text-sm font-bold uppercase italic"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="modalSuscripcion" class="modal">
+        <div class="bg-white p-8 lg:p-14 max-w-6xl w-full rounded-[3.5rem] shadow-2xl relative max-h-[90vh] overflow-y-auto border-4 border-slate-100">
+            <button onclick="cerrarModal('modalSuscripcion')" class="absolute top-8 right-8 text-3xl text-slate-300 hover:text-red-500 transition"><i class="fas fa-times-circle"></i></button>
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-black uppercase italic tracking-tighter mb-2 lang-txt" data-es="SUSCRIPCIÓN EMPRESARIAL" data-en="BUSINESS SUBSCRIPTION">SUSCRIPCIÓN EMPRESARIAL</h2>
+                <p class="text-slate-400 font-bold text-[10px] uppercase lang-txt" data-es="DESBLOQUEA LA IA Y EXPORTACIÓN DE ARCHIVOS" data-en="UNLOCK AI AND FILE EXPORT">DESBLOQUEA LA IA Y EXPORTACIÓN DE ARCHIVOS</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <div class="p-10 border-4 border-red-500 rounded-[3rem] bg-red-50/20 text-center relative shadow-2xl">
+                    <h3 class="text-2xl font-black text-red-600 italic mb-4 uppercase">Business Pro</h3>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-6 lang-txt" data-es="Ideal para restaurantes en crecimiento. Escandallos ilimitados, costos de empaque, envíos y exportación Excel/PDF mensual." data-en="Ideal for growing restaurants. Unlimited costing, packaging, shipping, and monthly Excel/PDF export.">Ideal para restaurantes en crecimiento. Escandallos ilimitados, costos de empaque, envíos y exportación Excel/PDF mensual.</p>
+                    <div class="text-5xl font-black mb-8 italic text-slate-900"><span class="sym-view">€</span><span class="price-pro">15</span><span class="text-xs text-slate-400 not-italic">/mes</span></div>
+                    <div id="paypal-button-pro" class="mb-4"></div>
+                    <a href="https://wa.me/573223565207?text=Quiero%20el%20Plan%20Pro%20v130" target="_blank" class="w-full py-5 bg-slate-950 text-white rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase shadow-xl hover:bg-green-600 transition">
+                        <i class="fas fa-mobile-alt"></i> Activar Nequi (+57 322 356 5207)
+                    </a>
+                </div>
+                <div class="p-10 border-2 border-slate-900 rounded-[3rem] bg-slate-950 text-white text-center shadow-2xl">
+                    <h3 class="text-2xl font-black text-yellow-500 italic uppercase mb-4">Master VIP</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-6 lang-txt" data-es="Acceso Vitalicio (De por vida). IA Predictiva avanzada, soporte prioritario y marca blanca disponible." data-en="Lifetime Access. Advanced Predictive AI, priority support, and white label available.">Acceso Vitalicio (De por vida). IA Predictiva avanzada, soporte prioritario y marca blanca disponible.</p>
+                    <div class="text-5xl font-black mb-8 italic text-yellow-500"><span class="sym-view">€</span><span class="price-vip">120</span></div>
+                    <div id="paypal-button-vip" class="mb-4"></div>
+                    <p class="text-[9px] text-slate-500 uppercase font-black italic mt-4 lang-txt" data-es="PAGO ÚNICO - SOPORTE 24/7" data-en="ONE TIME PAYMENT - 24/7 SUPPORT">PAGO ÚNICO - SOPORTE 24/7</p>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row gap-6 border-4 border-dashed border-slate-200 items-center">
+                <div class="flex-1 text-center md:text-left"><h5 class="font-black text-xs uppercase italic mb-1 lang-txt" data-es="ACTIVAR CÓDIGO DINÁMICO" data-en="ACTIVATE DYNAMIC CODE">ACTIVAR CÓDIGO DINÁMICO</h5><p class="text-[9px] font-bold text-slate-400 uppercase">El código vence automáticamente tras el periodo de uso.</p></div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <input id="inputCod" type="text" placeholder="TF-CODE-XXXX" class="flex-1 md:w-56 p-4 rounded-xl font-black text-center border">
+                    <button onclick="validarLicencia()" class="bg-red-600 text-white px-8 py-4 rounded-xl font-black uppercase text-[10px]">Validar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="panelAdmin" class="fixed bottom-0 left-0 w-full bg-slate-950 text-white p-6 hidden z-[3000] border-t-4 border-red-600">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <button onclick="cerrarAdmin()" class="bg-red-600 w-10 h-10 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+            <div class="text-center md:text-left"><h4 class="font-black uppercase text-xs italic text-red-500 mb-1">Generador de Licencias con Caducidad</h4><p class="text-[9px] font-bold text-slate-500 uppercase">Códigos Temporales Enterprise</p></div>
+            <div class="flex gap-4">
+                <button onclick="generarLicencia('BUSINESS PRO')" class="bg-white text-slate-950 px-8 py-3 rounded-xl font-black text-[10px] uppercase">Generar PRO (30 Días)</button>
+                <button onclick="generarLicencia('MASTER VIP')" class="bg-yellow-500 text-slate-950 px-8 py-3 rounded-xl font-black text-[10px] uppercase">Generar VIP (Vitalicio)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let inventory = JSON.parse(localStorage.getItem('tf_inv_v130')) || [];
+        let dishes = JSON.parse(localStorage.getItem('tf_dish_v130')) || [];
+        let combos = JSON.parse(localStorage.getItem('tf_combos_v130')) || [];
+        let expenses = JSON.parse(localStorage.getItem('tf_exp_v130')) || [];
+        let totalSales = parseFloat(localStorage.getItem('tf_sales_v130')) || 0;
+        let totalDirectCosts = parseFloat(localStorage.getItem('tf_direct_v130')) || 0;
+        let planActual = localStorage.getItem('tf_plan_v130') || "FREE";
+        let vPlan = localStorage.getItem('tf_venc_v130') || null;
+        let config = { lang: 'es', locale: 'de-DE', currency: 'EUR', symbol: '€' };
+        let mainChart = null;
+
+        function save() {
+            localStorage.setItem('tf_inv_v130', JSON.stringify(inventory));
+            localStorage.setItem('tf_dish_v130', JSON.stringify(dishes));
+            localStorage.setItem('tf_combos_v130', JSON.stringify(combos));
+            localStorage.setItem('tf_exp_v130', JSON.stringify(expenses));
+            localStorage.setItem('tf_sales_v130', totalSales);
+            localStorage.setItem('tf_direct_v130', totalDirectCosts);
+            localStorage.setItem('tf_plan_v130', planActual);
+            localStorage.setItem('tf_venc_v130', vPlan);
+            renderAll();
+        }
+
+        function format(n) { return new Intl.NumberFormat(config.locale, { style: 'currency', currency: config.currency }).format(n); }
+
+        function changeConfig(val) {
+            const [lang, loc, cur, sym, p1, p2] = val.split('|');
+            config = { lang, locale: loc, currency: cur, symbol: sym };
+            document.querySelectorAll('.lang-txt').forEach(el => el.innerText = el.dataset[lang]);
+            document.querySelectorAll('.price-pro').forEach(e => e.innerText = p1);
+            document.querySelectorAll('.price-vip').forEach(e => e.innerText = p2);
+            document.querySelectorAll('.sym-view').forEach(e => e.innerText = sym);
+            initPayPal(p1, p2);
+            renderAll();
+        }
+
+        function addInventory() {
+            const n = document.getElementById('inv-name').value, c = parseFloat(document.getElementById('inv-cost').value), 
+                  qp = parseFloat(document.getElementById('inv-qp').value) || 1, s = parseFloat(document.getElementById('inv-stock').value) || 0,
+                  u = document.getElementById('inv-unit').value;
+            if(n && c) { inventory.push({ id: Date.now(), name: n.toUpperCase(), unit: u, cost: c/qp, stock: s }); save(); }
+        }
+
+        function addDish() {
+            const n = document.getElementById('dish-name').value, p = parseFloat(document.getElementById('dish-price').value),
+                  pk = parseFloat(document.getElementById('dish-pack').value) || 0, sh = parseFloat(document.getElementById('dish-ship').value) || 0;
+            let costIng = 0, ings = [];
+            document.querySelectorAll('.dish-ing-qty').forEach(inp => {
+                const qty = parseFloat(inp.value) || 0;
+                if(qty > 0) { const it = inventory.find(i => i.id == inp.dataset.id); ings.push({ id: it.id, qty }); costIng += it.cost * qty; }
+            });
+            if(n && p) { dishes.push({ id: Date.now(), name: n.toUpperCase(), price: p, cost: costIng + pk + sh, ings, pk, sh }); save(); }
+        }
+
+        function addCombo() {
+            const n = document.getElementById('combo-name').value, p = parseFloat(document.getElementById('combo-price').value);
+            let sel = []; document.querySelectorAll('.combo-item-check:checked').forEach(c => sel.push(parseInt(c.value)));
+            if(n && p && sel.length > 0) { combos.push({ id: Date.now(), name: n.toUpperCase(), price: p, dishIds: sel }); save(); }
+        }
+
+        function vender(type, id) {
+            let item = type === 'dish' ? dishes.find(x => x.id === id) : combos.find(x => x.id === id);
+            const targets = type === 'dish' ? [item] : item.dishIds.map(dId => dishes.find(x => x.id === dId));
+            let stockOK = true;
+            targets.forEach(t => t.ings.forEach(ing => { if(inventory.find(i => i.id === ing.id).stock < ing.qty) stockOK = false; }));
+            if(!stockOK) { alert("ERROR: STOCK INSUFICIENTE"); return; }
+            targets.forEach(t => {
+                totalDirectCosts += t.cost;
+                t.ings.forEach(ing => { inventory.find(i => i.id === ing.id).stock -= ing.qty; });
+            });
+            totalSales += item.price; save();
+        }
+
+        function addExpense() {
+            const n = document.getElementById('exp-name').value, a = parseFloat(document.getElementById('exp-amount').value), t = document.getElementById('exp-type').value;
+            if(n && a) { expenses.push({ id: Date.now(), name: n.toUpperCase(), amount: a, type: t }); save(); }
+        }
+
+        function ejecutarIA() {
+            const fixed = expenses.filter(e => e.type === 'Fijo').reduce((a, b) => a + b.amount, 0);
+            let totalM = 0; dishes.forEach(d => { totalM += (d.price - d.cost) / d.price; });
+            let avgMargin = dishes.length > 0 ? (totalM / dishes.length) : 0.45;
+            const breakeven = avgMargin > 0 ? (fixed / avgMargin) : 0;
+            document.getElementById('kpi-breakeven').innerText = format(breakeven);
+            const msg = document.getElementById('ai-message');
+            if(totalSales < breakeven) {
+                msg.innerHTML = `⚠️ <span class="text-red-500">Déficit Operativo:</span> Vende ${format(breakeven - totalSales)} más para alcanzar el equilibrio.`;
+            } else {
+                msg.innerHTML = `✅ <span class="text-emerald-500">Rentabilidad Alcanzada:</span> Tu margen promedio es de ${((avgMargin)*100).toFixed(1)}%.`;
+            }
+        }
+
+        function renderAll() {
+            if(vPlan && Date.now() > parseInt(vPlan)) { planActual = "FREE"; vPlan = null; }
+            const fixed = expenses.filter(e => e.type === 'Fijo').reduce((a, b) => a + b.amount, 0);
+            const varExp = expenses.filter(e => e.type === 'Variable').reduce((a, b) => a + b.amount, 0);
+            const profit = totalSales - totalDirectCosts - fixed - varExp;
+            
+            document.getElementById('txt-plan').innerText = `PLAN ${planActual}`;
+            if(vPlan) {
+                let d = Math.ceil((parseInt(vPlan) - Date.now()) / (1000 * 60 * 60 * 24));
+                document.getElementById('txt-venc').innerText = `(${d}d restantes)`;
+            } else document.getElementById('txt-venc').innerText = "";
+
+            document.getElementById('kpi-sales').innerText = format(totalSales);
+            document.getElementById('kpi-cost').innerText = format(totalDirectCosts + varExp);
+            document.getElementById('kpi-fixed').innerText = format(fixed);
+            document.getElementById('kpi-profit').innerText = format(profit);
+
+            document.getElementById('table-inventory').innerHTML = inventory.map(i => `<tr><td class="p-4 px-6">${i.name}</td><td>${i.unit}</td><td>${format(i.cost)}</td><td class="${i.stock < 10 ? 'text-red-600 animate-pulse' : ''}">${i.stock.toFixed(2)}</td><td class="text-right pr-6"><button onclick="deleteItem('inv', ${i.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+            document.getElementById('table-expenses').innerHTML = expenses.map(e => `<tr><td class="p-4 px-6">${e.name}</td><td>${e.type}</td><td class="text-red-500">${format(e.amount)}</td><td class="text-right pr-6"><button onclick="deleteItem('exp', ${e.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+            document.getElementById('dish-ing-selector').innerHTML = inventory.map(i => `<div class="flex justify-between items-center text-[10px] font-black uppercase"><span>${i.name}</span><input type="number" step="0.01" data-id="${i.id}" class="dish-ing-qty w-16 bg-white/10 rounded-lg p-1 text-center border border-white/10"></div>`).join('');
+            document.getElementById('combo-items-selector').innerHTML = dishes.map(d => `<div class="flex items-center gap-3 text-[10px] uppercase font-black"><input type="checkbox" value="${d.id}" class="combo-item-check w-4 h-4"> <span>${d.name}</span></div>`).join('');
+            
+            document.getElementById('grid-menu').innerHTML = dishes.map(d => `
+                <div class="card-neo p-6 border-l-[10px] border-red-500 shadow-lg flex flex-col justify-between h-56">
+                    <div>
+                        <p class="text-[8px] font-black text-slate-400 uppercase italic">Utilidad: ${(( (d.price-d.cost)/d.price )*100).toFixed(1)}%</p>
+                        <h4 class="font-black text-sm uppercase">${d.name}</h4>
+                        <div class="text-2xl font-black text-red-600">${format(d.price)}</div>
+                        <p class="text-[7px] text-slate-500">Costo (Empaque+Envío): ${format(d.pk+d.sh)}</p>
+                    </div>
+                    <button onclick="vender('dish', ${d.id})" class="w-full py-3 bg-slate-950 text-white rounded-xl text-[10px] font-black uppercase transition active:scale-95">Vender</button>
+                </div>`).join('') + combos.map(c => `
+                <div class="card-neo p-6 border-l-[10px] border-emerald-500 bg-emerald-50 shadow-lg flex flex-col justify-between h-56">
+                    <div><p class="text-[8px] font-black text-emerald-600 uppercase italic">Combo Promo</p><h4 class="font-black text-sm uppercase">${c.name}</h4><div class="text-2xl font-black text-emerald-600">${format(c.price)}</div></div>
+                    <button onclick="vender('combo', ${c.id})" class="w-full py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase">Vender Combo</button>
+                </div>`).join('');
+
+            if(mainChart) mainChart.destroy();
+            mainChart = new Chart(document.getElementById('mainChart').getContext('2d'), { type: 'bar', data: { labels: ['Ventas', 'Variables', 'Fijos', 'Utilidad'], datasets: [{ data: [totalSales, totalDirectCosts + varExp, fixed, profit], backgroundColor: ['#0f172a', '#f97316', '#ef4444', '#10b981'], borderRadius: 12 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        }
+
+        function initPayPal(p1, p2) {
+            document.getElementById('paypal-button-pro').innerHTML = '';
+            document.getElementById('paypal-button-vip').innerHTML = '';
+            const toUSD = (v) => config.currency === 'COP' ? (parseFloat(v) / 4000).toFixed(2) : v;
+            paypal.Buttons({ createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { value: toUSD(p1) } }] }), onApprove: () => { planActual="BUSINESS PRO"; vPlan = Date.now() + (30*24*60*60*1000); save(); location.reload(); } }).render('#paypal-button-pro');
+            paypal.Buttons({ createOrder: (d, a) => a.order.create({ purchase_units: [{ amount: { value: toUSD(p2) } }] }), onApprove: () => { planActual="MASTER VIP"; vPlan = null; save(); location.reload(); } }).render('#paypal-button-vip');
+        }
+
+        function generarLicencia(tipo) {
+            const exp = tipo === 'BUSINESS PRO' ? Date.now() + (30*24*60*60*1000) : null;
+            const key = `TF-${tipo.substring(0,3)}-${Math.random().toString(36).substring(4).toUpperCase()}`;
+            let db = JSON.parse(localStorage.getItem('tf_keys_master')) || [];
+            db.push({ key, tipo, exp }); localStorage.setItem('tf_keys_master', JSON.stringify(db));
+            prompt(`NUEVA LICENCIA ${tipo}:`, key);
+        }
+
+        function validarLicencia() {
+            const val = document.getElementById('inputCod').value.trim().toUpperCase();
+            let db = JSON.parse(localStorage.getItem('tf_keys_master')) || [];
+            const idx = db.findIndex(k => k.key === val);
+            if(idx !== -1) { planActual = db[idx].tipo; vPlan = db[idx].exp; db.splice(idx, 1); localStorage.setItem('tf_keys_master', JSON.stringify(db)); save(); location.reload(); }
+            else alert("ERROR: LLAVE INVÁLIDA");
+        }
+
+        function exportarExcel() {
+            if(planActual === "FREE") return abrirModal('modalSuscripcion');
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(inventory), "Inventario");
+            XLSX.writeFile(wb, "TurboFood_Report.xlsx");
+        }
+
+        function generarPDF() {
+            if(planActual === "FREE") return abrirModal('modalSuscripcion');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("REPORTE OPERATIVO TURBOFOOD AI", 15, 20);
+            doc.autoTable({ html: '#table-inv-pdf', startY: 30 });
+            doc.save("Reporte_TurboFood.pdf");
+        }
+
+        function switchTab(id) { 
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden')); 
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+            document.getElementById('tab-'+id).classList.remove('hidden'); document.getElementById('btn-'+id).classList.add('tab-active');
+        }
+        function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
+        function cerrarAdmin() { document.getElementById('panelAdmin').classList.add('hidden'); }
+        function deleteItem(type, id) {
+            if(type === 'inv') inventory = inventory.filter(x => x.id !== id);
+            if(type === 'exp') expenses = expenses.filter(x => x.id !== id);
+            save();
+        }
+
+        let mCount = 0; document.addEventListener('keydown', e => { if(e.key.toLowerCase()==='m') { mCount++; if(mCount===5) { document.getElementById('panelAdmin').classList.remove('hidden'); mCount=0; } } });
+
+        window.onload = () => { changeConfig('es|de-DE|EUR|€|15|120'); ejecutarIA(); };
+    </script>
+</body>
+</html>
